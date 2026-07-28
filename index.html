@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>🎓 毕业蹭饭地图</title>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --text-main: #0f172a;
+      --text-sub: #64748b;
+      --bg-side: rgba(255, 255, 255, 0.92);
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body, html { width: 100%; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: var(--text-main); overflow: hidden; background-color: #f1f5f9; }
+
+    #app { display: flex; width: 100vw; height: 100vh; position: relative; }
+
+    /* 侧边栏面板 */
+    #panel {
+      position: absolute;
+      top: 16px; left: 16px; bottom: 16px;
+      width: 360px;
+      z-index: 10;
+      background: var(--bg-side);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .header { margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .header h1 { font-size: 22px; font-weight: 800; background: linear-gradient(135deg, #4f46e5, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .header .subtitle { font-size: 13px; color: var(--text-sub); margin-top: 4px; }
+
+    .loc-btn {
+      background: #e0e7ff;
+      color: var(--primary);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .loc-btn:hover { background: #c7d2fe; }
+
+    /* 控制组件 */
+    .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+    .search-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      outline: none;
+      font-size: 14px;
+      background: rgba(255, 255, 255, 0.8);
+      transition: all 0.2s;
+    }
+    .search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); background: #fff; }
+
+    /* 筛选 Tabs */
+    .tabs { display: flex; background: #e2e8f0; padding: 3px; border-radius: 10px; font-size: 13px; }
+    .tab-btn { flex: 1; text-align: center; padding: 6px 0; border-radius: 8px; cursor: pointer; color: var(--text-sub); font-weight: 500; transition: all 0.2s; }
+    .tab-btn.active { background: #fff; color: var(--primary); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+    /* 学生/学校列表 */
+    #list { flex: 1; overflow-y: auto; padding-right: 4px; }
+    #list::-webkit-scrollbar { width: 5px; }
+    #list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+    .card-item {
+      padding: 12px 14px;
+      margin-bottom: 8px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-item:hover, .card-item.active {
+      transform: translateY(-2px);
+      border-color: var(--primary);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.12);
+    }
+    .card-item.active { background: #f5f3ff; }
+    
+    .card-info .title { font-weight: 600; font-size: 14px; color: var(--text-main); margin-bottom: 2px; }
+    .card-info .desc { font-size: 12px; color: var(--text-sub); }
+    .badge {
+      background: #e0e7ff;
+      color: var(--primary);
+      border-radius: 12px;
+      padding: 3px 8px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* 地图容器 */
+    #map { width: 100%; height: 100%; }
+
+    /* 自定义 InfoWindow 样式 */
+    .iw-container { padding: 4px; }
+    .iw-title { font-weight: 700; font-size: 15px; color: var(--primary); margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px; }
+    .iw-tag { display: inline-block; background: #f1f5f9; color: var(--text-main); padding: 4px 8px; border-radius: 6px; margin: 2px; font-size: 12px; border: 1px solid #e2e8f0; }
+    /* 被选中的具体同学在地图弹窗中的高亮样式 */
+    .iw-tag.active { background: #4f46e5; color: #ffffff; border-color: #4f46e5; font-weight: 600; }
+
+    /* 移动端适配 */
+    @media (max-width: 640px) {
+      #panel { width: calc(100% - 32px); height: 45%; top: auto; bottom: 16px; }
+    }
+  </style>
+  <!-- 百度地图 API v3.0 -->
+  <script src="https://api.map.baidu.com/api?v=3.0&ak=CgEdPYjeqMhynVhSHaVs1mT4B3Q1Of5F"></script>
+</head>
+<body>
+
+<div id="app">
+  <div id="panel">
+    <div class="header">
+      <div>
+        <h1>🎓 毕业蹭饭地图</h1>
+      </div>
+    </div>
+    
+    <div class="controls">
+      <input type="text" id="search" class="search-input" placeholder="🔍 搜索姓名、学校或省份...">
+      <div class="tabs">
+        <div class="tab-btn active" onclick="switchView('student')">按学生</div>
+        <div class="tab-btn" onclick="switchView('school')">按学校</div>
+        <div class="tab-btn" onclick="switchView('province')">按省份</div>
+      </div>
+    </div>
+
+    <div id="list"></div>
+  </div>
+  
+  <div id="map"></div>
+</div>
+
+<script>
+// 1. 基础数据源
+const students = [
+  {"name": "艾煦然", "school": "沈阳理工大学", "province": "辽宁"},
+  {"name": "陈雪", "school": "辽宁科技大学", "province": "辽宁"},
+  {"name": "党文岳", "school": "沈阳化工大学", "province": "辽宁"},
+  {"name": "董思婕", "school": "大连外国语大学", "province": "辽宁"},
+  {"name": "方樱铮", "school": "沈阳农业大学", "province": "辽宁"},
+  {"name": "冯梓晨", "school": "江苏大学", "province": "江苏"},
+  {"name": "高睿泽", "school": "辽宁科技大学", "province": "辽宁"},
+  {"name": "顾书铭", "school": "辽宁警察学院", "province": "辽宁"},
+  {"name": "洪奥雯琪", "school": "湖北医药学院", "province": "湖北"},
+  {"name": "侯贺元", "school": "沈阳工业大学", "province": "辽宁"},
+  {"name": "黄诗贻", "school": "大连财经学院", "province": "辽宁"},
+  {"name": "姜鉴航", "school": "大连交通大学", "province": "辽宁"},
+  {"name": "康美实", "school": "南京工业大学", "province": "江苏"},
+  {"name": "李雯悦", "school": "江苏理工学院", "province": "江苏"},
+  {"name": "李子奥", "school": "沈阳工业大学", "province": "辽宁"},
+  {"name": "刘诗彤", "school": "陆军工程大学", "province": "江苏"},
+  {"name": "马振伯禹", "school": "沈阳工业大学", "province": "辽宁"},
+  {"name": "孟艾纹叶", "school": "华东交通大学", "province": "江西"},
+  {"name": "孟艾纹萱", "school": "苏州科技大学", "province": "江苏"},
+  {"name": "庞明瑞", "school": "沈阳建筑大学", "province": "辽宁"},
+  {"name": "祁珈羽", "school": "沈阳药科大学", "province": "辽宁"},
+  {"name": "秦旭雅琦", "school": "中国民用航空飞行学院", "province": "四川"},
+  {"name": "曲庚初", "school": "辽宁警察学院", "province": "辽宁"},
+  {"name": "史雨鑫", "school": "辽宁科技大学", "province": "辽宁"},
+  {"name": "宋鑫仪", "school": "洛阳理工学院", "province": "河南"},
+  {"name": "隋骐鸿", "school": "沈阳工程学院", "province": "辽宁"},
+  {"name": "孙浩然", "school": "辽宁科技大学", "province": "辽宁"},
+  {"name": "孙韦智", "school": "天津中德应用技术大学", "province": "天津"},
+  {"name": "汤钧夫", "school": "沈阳建筑大学", "province": "辽宁"},
+  {"name": "田奕涵", "school": "沈阳师范大学", "province": "辽宁"},
+  {"name": "王世亨", "school": "陆军步兵学院", "province": "江西"},
+  {"name": "王艺嘉儿", "school": "大连民族大学", "province": "辽宁"},
+  {"name": "王梓铭", "school": "渤海大学", "province": "辽宁"},
+  {"name": "闫思琦", "school": "沈阳建筑大学", "province": "辽宁"},
+  {"name": "杨欣竹", "school": "辽宁科技大学", "province": "辽宁"},
+  {"name": "于皓鑫", "school": "广东轻工职业技术大学", "province": "广东"},
+  {"name": "于欣禾", "school": "沈阳工业大学", "province": "辽宁"},
+  {"name": "袁楚闻", "school": "辽宁工程技术大学", "province": "辽宁"},
+  {"name": "张富灏", "school": "辽宁中医药大学", "province": "辽宁"},
+  {"name": "赵田宇", "school": "大连医科大学", "province": "辽宁"},
+  {"name": "赵轩唯", "school": "渤海大学", "province": "辽宁"},
+  {"name": "郑梦晗", "school": "江西中医药大学", "province": "江西"},
+  {"name": "邹明哲", "school": "辽宁科技大学", "province": "辽宁"}
+];
+
+// 2. 初始化地图
+let currentMode = 'student';
+const schoolGroups = {};
+// 高校坐标缓存（可永久写入源码）
+// 格式：学校名: {lng: 经度, lat: 纬度}
+// 已定位后的坐标可直接填入此处，程序将优先使用内置坐标。
+const schoolLocations = {
+  "沈阳理工大学": {
+    "lng": 123.50068539326655,
+    "lat": 41.733046914292935
+  },
+  "辽宁科技大学": {
+    "lng": 123.06813332410196,
+    "lat": 41.109255306211374
+  },
+  "沈阳化工大学": {
+    "lng": 123.24089543978084,
+    "lat": 41.75150873499873
+  },
+  "大连外国语大学": {
+    "lng": 121.31579079967769,
+    "lat": 38.81774607843732
+  },
+  "沈阳农业大学": {
+    "lng": 123.57880204041415,
+    "lat": 41.83207572266428
+  },
+  "江苏大学": {
+    "lng": 119.52331198506768,
+    "lat": 32.20551550476061
+  },
+  "辽宁警察学院": {
+    "lng": 121.33641589418679,
+    "lat": 38.968995992712394
+  },
+  "湖北医药学院": {
+    "lng": 110.7915668347595,
+    "lat": 32.629034536876496
+  },
+  "沈阳工业大学": {
+    "lng": 123.25690324396857,
+    "lat": 41.74237272822969
+  },
+  "大连财经学院": {
+    "lng": 121.8378320637461,
+    "lat": 39.0922458640043
+  },
+  "大连交通大学": {
+    "lng": 121.57761092361561,
+    "lat": 38.91678614672802
+  },
+  "南京工业大学": {
+    "lng": 118.64676343454106,
+    "lat": 32.08657441105347
+  },
+  "江苏理工学院": {
+    "lng": 119.92494437857849,
+    "lat": 31.755083570829832
+  },
+  "陆军工程大学": {
+    "lng": 118.75,
+    "lat": 32.04
+  },
+  "华东交通大学": {
+    "lng": 115.87786244743904,
+    "lat": 28.744176827521315
+  },
+  "苏州科技大学": {
+    "lng": 120.58368977515546,
+    "lat": 31.254729407322916
+  },
+  "沈阳建筑大学": {
+    "lng": 123.52244235271766,
+    "lat": 41.7489659165271
+  },
+  "沈阳药科大学": {
+    "lng": 123.4528775740249,
+    "lat": 41.773664043975145
+  },
+  "中国民用航空飞行学院": {
+    "lng": 104.3149458028097,
+    "lat": 30.95483909186377
+  },
+  "洛阳理工学院": {
+    "lng": 112.43,
+    "lat": 34.62
+  },
+  "沈阳工程学院": {
+    "lng": 123.42542535763982,
+    "lat": 41.92449673054699
+  },
+  "天津中德应用技术大学": {
+    "lng": 117.39341165479907,
+    "lat": 39.017102308964795
+  },
+  "大连民族大学": {
+    "lng": 121.78,
+    "lat": 39.05
+  },
+  "渤海大学": {
+    "lng": 121.12547579433294,
+    "lat": 41.09143747676868
+  },
+  "广东轻工职业技术大学": {
+    "lng": 113.31027174133712,
+    "lat": 23.097476575273724
+  },
+  "辽宁工程技术大学": {
+    "lng": 121.67019028947331,
+    "lat": 42.02822437580307
+  },
+  "辽宁中医药大学": {
+    "lng": 123.44116367017445,
+    "lat": 41.83720848115422
+  },
+  "大连医科大学": {
+    "lng": 121.32195317547519,
+    "lat": 38.80884782711896
+  },
+  "江西中医药大学": {
+    "lng": 115.75777696690427,
+    "lat": 28.682465744601892
+  },
+  "陆军步兵学院": {
+    "lng": 115.92,
+    "lat": 28.68
+  }
+}
+
+students.forEach(s => (schoolGroups[s.school] = schoolGroups[s.school] || []).push(s));
+
+const map = new BMap.Map('map');
+map.centerAndZoom(new BMap.Point(116.404, 39.915), 5); 
+map.enableScrollWheelZoom();
+
+const markersMap = {};
+const allPoints = [];
+let myLocationMarker = null;
+
+// 3. 实时检索高校位置
+function fetchSchoolLocationsRealtime() {
+  const schools = Object.keys(schoolGroups);
+  let processedCount = 0;
+
+  schools.forEach((school) => {
+    const people = schoolGroups[school];
+    const province = people[0].province;
+
+    // 优先使用源码内置坐标，避免重复搜索高校位置
+    if (schoolLocations[school]) {
+      const p = schoolLocations[school];
+      addMarkerToMap(school, people, new BMap.Point(p.lng, p.lat));
+      processedCount++;
+      checkComplete();
+      return;
+    }
+
+    const query = `${province}省${school}`;
+
+    const local = new BMap.LocalSearch(map, {
+      onSearchComplete: function(results) {
+        processedCount++;
+        
+        if (local.getStatus() === BMAP_STATUS_SUCCESS && results.getPoi(0)) {
+          addMarkerToMap(school, people, results.getPoi(0).point);
+        } else {
+          const fallbackLocal = new BMap.LocalSearch(map, {
+            onSearchComplete: function(res) {
+              if (fallbackLocal.getStatus() === BMAP_STATUS_SUCCESS && res.getPoi(0)) {
+                addMarkerToMap(school, people, res.getPoi(0).point);
+              }
+              checkComplete();
+            }
+          });
+          fallbackLocal.search(school);
+          return;
+        }
+
+        checkComplete();
+      }
+    });
+
+    local.search(query);
+  });
+
+  function checkComplete() {
+    if (processedCount === schools.length) {
+      document.getElementById('stats').innerText = `${students.length} 位同学 · 分布于 ${schools.length} 所高校`;
+      setTimeout(adjustViewport, 400);
+    }
+  }
+}
+
+// 动态创建 / 打开对应学校的 InfoWindow（支持精准高亮指定同学）
+function getInfoWindowContent(school, selectedStudentName = null) {
+  const people = schoolGroups[school] || [];
+  const namesHtml = people.map(p => {
+    const isActive = (p.name === selectedStudentName) ? 'active' : '';
+    return `<span class="iw-tag ${isActive}">🎓 ${p.name}</span>`;
+  }).join('');
+
+  return `
+    <div class="iw-container">
+      <div class="iw-title">${school}</div>
+      <div>${namesHtml}</div>
+    </div>
+  `;
+}
+
+// 在地图上绘制标记
+function addMarkerToMap(school, people, point) {
+  if (markersMap[school]) return;
+
+  allPoints.push(point);
+  const marker = new BMap.Marker(point);
+  map.addOverlay(marker);
+
+  const label = new BMap.Label(`<b>${school}</b> <span style="color:#4f46e5;">(${people.length}人)</span>`, {
+    offset: new BMap.Size(20, -12)
+  });
+  label.setStyle({
+    color: '#334155',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    border: '1px solid #cbd5e1',
+    borderRadius: '6px',
+    padding: '4px 8px',
+    fontSize: '12px',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
+  });
+  marker.setLabel(label);
+
+  marker.addEventListener('click', () => {
+    // 点击地图图标时，打开不带特别高亮（或全量）的窗口
+    const html = getInfoWindowContent(school);
+    const infoWindow = new BMap.InfoWindow(html, { width: 240, enableMessage: false });
+    map.openInfoWindow(infoWindow, point);
+    highlightSidebarItem(school);
+  });
+
+  markersMap[school] = { marker, point };
+}
+
+function adjustViewport() {
+  if (allPoints.length > 0) {
+    map.setViewport(allPoints, { zoomFactor: -1 });
+  }
+}
+
+// 4. 侧边栏 UI 与精准高亮交互
+const listContainer = document.getElementById('list');
+
+function renderList() {
+  const keyword = document.getElementById('search').value.trim().toLowerCase();
+  listContainer.innerHTML = '';
+
+  if (currentMode === 'student') {
+    const filtered = students.filter(s => 
+      s.name.toLowerCase().includes(keyword) || 
+      s.school.toLowerCase().includes(keyword) || 
+      s.province.toLowerCase().includes(keyword)
+    );
+    
+    filtered.forEach(s => {
+      const el = document.createElement('div');
+      el.className = 'card-item';
+      el.id = `item-student-${s.name}`;
+      el.innerHTML = `
+        <div class="card-info">
+          <div class="title">${s.name}</div>
+          <div class="desc">${s.school}</div>
+        </div>
+        <div class="badge">${s.province}</div>
+      `;
+      // 点击学生时，同时传入“学校”和“该学生姓名”
+      el.onclick = () => focusSchoolOnMap(s.school, s.name);
+      listContainer.appendChild(el);
+    });
+
+  } else if (currentMode === 'school') {
+    Object.keys(schoolGroups).forEach(school => {
+      const people = schoolGroups[school];
+      if (school.toLowerCase().includes(keyword) || people.some(p => p.name.includes(keyword))) {
+        const el = document.createElement('div');
+        el.className = 'card-item';
+        el.id = `item-school-${school}`;
+        el.innerHTML = `
+          <div class="card-info">
+            <div class="title">${school}</div>
+            <div class="desc">${people.map(p=>p.name).join(', ')}</div>
+          </div>
+          <div class="badge">${people.length} 人</div>
+        `;
+        el.onclick = () => focusSchoolOnMap(school);
+        listContainer.appendChild(el);
+      }
+    });
+
+  } else if (currentMode === 'province') {
+    const provMap = {};
+    students.forEach(s => (provMap[s.province] = provMap[s.province] || []).push(s));
+    
+    Object.keys(provMap).forEach(prov => {
+      const people = provMap[prov];
+      if (prov.includes(keyword) || people.some(p => p.name.includes(keyword))) {
+        const el = document.createElement('div');
+        el.className = 'card-item';
+        el.innerHTML = `
+          <div class="card-info">
+            <div class="title">${prov}省/市</div>
+            <div class="desc">${Array.from(new Set(people.map(p=>p.school))).join(', ')}</div>
+          </div>
+          <div class="badge">${people.length} 人</div>
+        `;
+        el.onclick = () => focusSchoolOnMap(people[0].school);
+        listContainer.appendChild(el);
+      }
+    });
+  }
+}
+
+// 【关键更新】聚焦学校，并精准高亮指定同学
+function focusSchoolOnMap(school, targetStudentName = null) {
+  const target = markersMap[school];
+  if (target) {
+    map.panTo(target.point);
+    map.setZoom(14);
+    
+    // 打开包含特定学生高亮的 InfoWindow
+    const html = getInfoWindowContent(school, targetStudentName);
+    const infoWindow = new BMap.InfoWindow(html, { width: 240, enableMessage: false });
+    map.openInfoWindow(infoWindow, target.point);
+    
+    target.marker.setAnimation(BMAP_ANIMATION_BOUNCE);
+    setTimeout(() => target.marker.setAnimation(null), 1200);
+
+    // 侧边栏卡片精准高亮
+    highlightSidebarItem(school, targetStudentName);
+  }
+}
+
+function highlightSidebarItem(school, targetStudentName = null) {
+  document.querySelectorAll('.card-item').forEach(el => el.classList.remove('active'));
+  
+  if (targetStudentName) {
+    // 按学生高亮
+    const activeEl = document.getElementById(`item-student-${targetStudentName}`);
+    if (activeEl) {
+      activeEl.classList.add('active');
+      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  } else {
+    // 按学校高亮
+    const activeEl = document.getElementById(`item-school-${school}`);
+    if (activeEl) {
+      activeEl.classList.add('active');
+      activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+}
+
+
+function switchView(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+    btn.classList.toggle('active', (mode === 'student' && idx === 0) || (mode === 'school' && idx === 1) || (mode === 'province' && idx === 2));
+  });
+  renderList();
+}
+
+document.getElementById('search').addEventListener('input', renderList);
+
+// 程序入口
+fetchSchoolLocationsRealtime();
+renderList();
+</script>
+</body>
+</html>
