@@ -200,6 +200,7 @@ const students = [
   {"name": "赵轩唯", "school": "渤海大学", "province": "辽宁"},
   {"name": "郑梦晗", "school": "江西中医药大学", "province": "江西"},
   {"name": "邹明哲", "school": "辽宁科技大学", "province": "辽宁"}
+  {"name": "房以林", "school": "辽宁交通高等专科学校", "province": "辽宁"}
 ];
 
 // 2. 初始化地图
@@ -328,7 +329,10 @@ const schoolLocations = {
   "陆军步兵学院": {
     "lng": 115.92,
     "lat": 28.68
-  }
+  },
+  "辽宁交通高等专科学校": {
+    "lng": 105.92,
+    "lat": 30.68
 }
 
 students.forEach(s => (schoolGroups[s.school] = schoolGroups[s.school] || []).push(s));
