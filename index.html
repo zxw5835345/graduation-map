@@ -163,6 +163,7 @@ const students = [
   {"name": "董思婕", "school": "大连外国语大学", "province": "辽宁"},
   {"name": "方樱铮", "school": "沈阳农业大学", "province": "辽宁"},
   {"name": "冯梓晨", "school": "江苏大学", "province": "江苏"},
+  {"name": "房以林", "school": "辽宁交通高等专科学校", "province": "辽宁"},
   {"name": "高睿泽", "school": "辽宁科技大学", "province": "辽宁"},
   {"name": "顾书铭", "school": "辽宁警察学院", "province": "辽宁"},
   {"name": "洪奥雯琪", "school": "湖北医药学院", "province": "湖北"},
@@ -199,8 +200,7 @@ const students = [
   {"name": "赵田宇", "school": "大连医科大学", "province": "辽宁"},
   {"name": "赵轩唯", "school": "渤海大学", "province": "辽宁"},
   {"name": "郑梦晗", "school": "江西中医药大学", "province": "江西"},
-  {"name": "邹明哲", "school": "辽宁科技大学", "province": "辽宁"},
-  {"name": "房以林", "school": "辽宁交通高等专科学校", "province": "辽宁"}
+  {"name": "邹明哲", "school": "辽宁科技大学", "province": "辽宁"}
 ];
 
 // 2. 初始化地图
@@ -326,13 +326,14 @@ const schoolLocations = {
     "lng": 115.75777696690427,
     "lat": 28.682465744601892
   },
+  "辽宁交通高等专科学校": {
+    "lng": 123.518508,
+    "lat": 41.941736
+  },
   "陆军步兵学院": {
     "lng": 115.92,
     "lat": 28.68
-  },
-  "辽宁交通高等专科学校": {
-    "lng": 105.92,
-    "lat": 30.68
+  }
 }
 
 students.forEach(s => (schoolGroups[s.school] = schoolGroups[s.school] || []).push(s));
